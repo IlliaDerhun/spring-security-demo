@@ -52,7 +52,7 @@ public class DemoAppConfig {
 
         // log the connection props
         LOGGER.info(">>>> jdbc.ulr = " + env.getProperty("jdbc.url"));
-        LOGGER.info(">>>> jdbc.ulr = " + env.getProperty("jdbc.user"));
+        LOGGER.info(">>>> jdbc.user = " + env.getProperty("jdbc.user"));
 
         // set database connection props
         securityDataSource.setJdbcUrl(env.getProperty("jdbc.url"));
