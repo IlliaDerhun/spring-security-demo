@@ -89,6 +89,14 @@
 
                         </form:form>
 
+                        <form:form action="${pageContext.request.contextPath}/register" method="POST">
+                            <div style="margin-top: 10px" class="form-group">
+                                <div class="col-sm-6 controls">
+                                    <button type="submit" class="btn btn-success">Register</button>
+                                </div>
+                            </div>
+                        </form:form>
+
                     </div>
 
                 </div>
