@@ -7,18 +7,23 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
+import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.servlet.ViewResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 import javax.sql.DataSource;
 import java.beans.PropertyVetoException;
+import java.util.Properties;
 import java.util.logging.Logger;
 
 @Configuration
 @EnableWebMvc
 @ComponentScan(basePackages = "com.github.illiaderhun")
 @PropertySource("classpath:persistence-mysql.properties")
+@EnableTransactionManagement
 public class DemoAppConfig {
 
     @Autowired
@@ -37,35 +42,44 @@ public class DemoAppConfig {
         return theViewResolver;
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     public DataSource securityDataSource() {
+        ComboPooledDataSource thePool = new ComboPooledDataSource();
 
-        // create connection pool
-        ComboPooledDataSource securityDataSource = new ComboPooledDataSource();
-
-        // set the jdbc driver class
         try {
-            securityDataSource.setDriverClass(env.getProperty("jdbc.driver"));
+            thePool.setDriverClass("com.mysql.jdbc.Driver");
         } catch (PropertyVetoException e) {
             throw new RuntimeException(e);
         }
+        thePool.setJdbcUrl(env.getProperty("jdbc.url"));
+        thePool.setUser(env.getProperty("jdbc.user"));
+        thePool.setPassword(env.getProperty("jdbc.password"));
 
-        // log the connection props
-        LOGGER.info(">>>> jdbc.ulr = " + env.getProperty("jdbc.url"));
-        LOGGER.info(">>>> jdbc.user = " + env.getProperty("jdbc.user"));
+        thePool.setInitialPoolSize(getIntProperty("connection.pool.initialPoolSize"));
+        thePool.setMinPoolSize(getIntProperty("connection.pool.minPoolSize"));
+        thePool.setMaxPoolSize(getIntProperty("connection.pool.maxPoolSize"));
+        thePool.setMaxIdleTime(getIntProperty("connection.pool.maxIdleTime"));
+        return thePool;
+    }
 
-        // set database connection props
-        securityDataSource.setJdbcUrl(env.getProperty("jdbc.url"));
-        securityDataSource.setUser(env.getProperty("jdbc.user"));
-        securityDataSource.setPassword(env.getProperty("jdbc.password"));
+    @Bean
+    public LocalSessionFactoryBean sessionFactory() {
+        LocalSessionFactoryBean theSession = new LocalSessionFactoryBean();
 
-        // set connection pool props
-        securityDataSource.setInitialPoolSize(getIntProperty("connection.pool.initialPoolSize"));
-        securityDataSource.setMinPoolSize(getIntProperty("connection.pool.minPoolSize"));
-        securityDataSource.setMaxPoolSize(getIntProperty("connection.pool.maxPoolSize"));
-        securityDataSource.setMaxIdleTime(getIntProperty("connection.pool.maxIdleTime"));
+        theSession.setDataSource(securityDataSource());
+        theSession.setPackagesToScan("com.github.illiaderhun.entity");
+        theSession.setHibernateProperties(getHibernateProperties());
 
-        return securityDataSource;
+        return theSession;
+    }
+
+    @Bean
+    public HibernateTransactionManager myTransactionManager() {
+        HibernateTransactionManager theManager = new HibernateTransactionManager();
+
+        theManager.setSessionFactory(sessionFactory().getObject());
+
+        return theManager;
     }
 
     private int getIntProperty(String propName) {
@@ -74,5 +88,14 @@ public class DemoAppConfig {
         Integer intPropVal = Integer.parseInt(propVal);
 
         return intPropVal;
+    }
+
+    private Properties getHibernateProperties() {
+        Properties hibernateProperties = new Properties();
+
+        hibernateProperties.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        hibernateProperties.put("hibernate.show_sql", true);
+
+        return hibernateProperties;
     }
 }
